@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# This bash script is intended to take data from the HRRR model and get out a single grid point.
+# The script has a hard-coded lat long value determined by the current project but can be modified as necessary.
+# Author: W. Logan Downing
+
+FILE_START=2019.04.
+FILE_MID=.Reduced.hrrr.t
+FILE_END=z.wrfsfcf
+
+LONGITUDE=-86.0431
+LATITUDE=39.7299
+
+for day in 01 #{28..31}
+do
+   for hour in {00..23}
+   do
+      for fcsthr in {00..18}
+      do
+         wgrib2 ${FILE_START}${day}${FILE_MID}${hour}${FILE_END}${fcsthr}.grib2 -lon ${LONGITUDE} ${LATITUDE} -s -inv ./i465/${FILE_START}${day}${FILE_MID}${hour}${FILE_END}${fcsthr}.grib2.csv || echo "Failed to generate a csv for day: ${day} and hour: ${hour}"
+      done   
+   done
+done
