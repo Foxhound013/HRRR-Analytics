@@ -1,0 +1,57 @@
+#!/bin/bash
+#
+# This script is designed to reach out to the raw hrrr grib data sitting on depot and subset them to a list of points.
+# These points in this script are specific RWIS stations as determined by the JTRP project this script was designed for.
+# The script will first subset the data to a specific point using functionality provided by wgrib. This subset will be
+# stored to a directory on depot. This script will then fire off a python script to do some processing on each of the
+# RWIS designated HRRR data points to aggregate forecast hours.
+
+# The lat long list and directory names lists are coupled and are required to stay in the same order.
+
+# NOTE: THIS SCRIPT WILL TAKE QUITE A WHILE TO RUN, ALLOW FOR AT LEAST 8 HOURS PER SITE PER MONTH
+
+declare -a lat
+declare -a long
+#lat=(39.358 39.9315 39.7337 40.5652 39.7674 39.8531 39.6758 40.043 40.0938)
+#long=(-85.5112 -86.3394 -86.0461 -86.127 -86.1434 -85.351 -86.345 -86.1361 -86.1282)
+#lat=(41.1684 40.4797 38.6854 38.3462)
+#long=(-85.0941 -85.5486 -85.7872 -85.7477)
+lat=(38.6854 38.3462)
+long=(-85.7872 -85.7477)
+
+
+
+
+declare -a out_directory
+#out_directory=(greensburg i65@i865 i74@i465 kokomo market_st_i65_70 new_castle plainfield_i70_eb us31@sr32 us31@sr38)
+out_directory=(jeffersonville scottsburg)
+
+
+#File Read directory
+BASE_PATH=/depot/wwtung/data/LoganD/hrrrOut/jtrp/winter_2018_19_raw/jan_19  ####### MODIFY THIS LINE TO SWITCH MONTHS #######
+OUT_PATH=/depot/wwtung/data/LoganD/hrrrOut/jtrp/rwis_jan/                   ####### MODIFY THIS LINE TO SWITCH OUTPUT MONTH #######
+
+
+# Loop through lat index in order to reference lat, long, and out_directory arrays. This loop will generate all of the csv files for HRRR Stations at RWIS Sites
+# and drop these files into the appropriate folder on depot.
+for i in ${!lat[@]}; do
+   for file in ${BASE_PATH}/*; do
+      wgrib2 ${BASE_PATH}/${file##*/} -lon ${long[$i]} ${lat[$i]} -s -inv ${OUT_PATH}${out_directory[$i]}/${file##*/}.csv
+      echo $file
+   done
+   echo "Finished ${out_directory[$i]}"
+done
+
+
+
+
+
+
+
+
+
+
+
+
+
+

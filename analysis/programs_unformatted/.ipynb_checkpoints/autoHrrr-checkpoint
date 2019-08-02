@@ -1,0 +1,67 @@
+#!/bin/bash
+#
+# This program is intended to fetch data from HRRR Archive at University of Utah.
+# Wgrib2 is required for this script to work as it relies heavily on the functions
+# wrapped up into Wgrib2.
+#
+# Author: W. Logan Downing
+
+# Establish the components of the URL with constants and the parts that will be modified in the script.
+BASE_URL=https://pando-rgw01.chpc.utah.edu/hrrr/sfc/
+
+year=2019
+month=02
+count=0
+FAIL=0
+
+FILE_START=hrrr.t
+FILE_MID=z.wrfsfcf
+FILE_END=.grib2
+
+DEPOT=/depot/wwtung/data/LoganD/hrrrOut/jtrp/winter_2018_19_raw/feb_19/
+
+fetchAndProcess() {
+   fileOut="${DEPOT}${year}.${month}.${day}.hrrr.t${hour}z.wrfsfcf${fcstHr}${FILE_END}" # The base file to be reduced.
+   wget -O $fileOut "${BASE_URL}${year}${month}${day}/${FILE_START}${hour}${FILE_MID}${fcstHr}${FILE_END}" || echo "day:${day} hour:${hour} fcstHr:${fcstHr} failed to download"
+
+   fileSmallOut="${DEPOT}${year}.${month}.${day}.var_reduction.hrrr.t${hour}z.wrfsfcf${fcstHr}${FILE_END}" # Only contains the variables we want to reduce to.
+   reduced="${DEPOT}${year}.${month}.${day}.Reduced.hrrr.t${hour}z.wrfsfcf${fcstHr}${FILE_END}" # The final product, reduced by grid and variable.
+
+   # Comment below will only subset by the grid but provide all variables.
+   #wgrib2 $fileOut | egrep 'surface|2 m|10 m' | wgrib2 -i $fileOut | wgrib2 $fileOut -ijsmall_grib 1150:1300 500:700 $fileSmallOut || echo "wgrib failed to subset ..."
+
+   # first subset by variable and remove accumulation forecasts and land and ice variables
+   wgrib2 $fileOut -s | egrep 'surface|2 m|10 m' | grep -v 'acc fcst' | grep -v 'LAND' | grep -v 'ICEC' | wgrib2 -i $fileOut -grib $fileSmallOut || echo "wgrib failed to subset by variable ..."
+   rm $fileOut # Remove the original file to save space.
+
+   # Subset the file by the grid. This subset is chosen to be set over Indiana. The values were chosen using the Weather Climate Toolkit from NOAA
+   wgrib2 $fileSmallOut -ijsmall_grib 1150:1300 500:700 $reduced || echo "wgrib failed to subset the grid ..."
+   rm $fileSmallOut # Remove the file subsetted by variables to save space.
+}
+
+
+# Loop through i number of days, however many you're interested in
+for day in 09 #{01..31}
+do
+   # Loop through the 24 hours in a day
+   for hour in {00..23}
+   do
+      # Loop through the 19 (0 to 18) forecast hours for each hour of the day
+      # This is where the wgrib processing will take place
+      for fcstHr in {00..18}
+      do 
+         fetchAndProcess #&
+         wait
+      done
+   # Loop through the current backgrounded jobs and wait for all 19 to finish before proceeding.
+   #for job in `jobs -p`
+   #do
+   #   wait $job || FAIL=$((FAIL+1))
+   #done 
+   
+   
+   done
+
+done
+
+wait
